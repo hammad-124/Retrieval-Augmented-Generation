@@ -18,19 +18,20 @@ Naive RAG (embed → retrieve → generate) breaks in production:
 
 ---
 
-## Solution — Three Modules
+## Solution — Five Modules
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    RAG Playbook                             │
-├─────────────────┬───────────────────┬───────────────────────┤
-│  hybridSearch   │ optimizeRagTech   │ tokenTracking&Limit   │
-│                 │                   │                       │
-│  Vector + BM25  │ Multi-Query       │ Pre-flight budget     │
-│  (keywords)     │ Contextual Comp.  │ Per-user tracking     │
-│                 │ Parent Doc        │ Cost ceiling          │
-│                 │ Hybrid Ensemble   │                       │
-└─────────────────┴───────────────────┴───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                          RAG Playbook                               │
+├──────────────┬──────────────┬──────────────┬─────────────┬──────────┤
+│  hybridSearch│ optimizeRAG  │ tokenTracking│  costOpt.   │scalingRAG│
+│              │              │ &Limiting    │             │          │
+│  Vector +    │ Multi-Query  │ Pre-flight   │ Dim. Reduce │ HNSW     │
+│  BM25        │ Contextual   │ budget       │ Quantization│ Indexing │
+│  (keywords)  │ Compression  │ Per-user     │ Batching    │ M & ef   │
+│              │ Parent Doc   │ tracking     │ Caching     │ tuning   │
+│              │ Ensemble     │ Cost ceiling │ Right-size  │          │
+└──────────────┴──────────────┴──────────────┴─────────────┴──────────┘
 ```
 
 ### 1. [`hybridSearch/`](hybridSearch/README.md) — Hybrid Search (Vector + BM25)
@@ -45,7 +46,7 @@ Query ──┬─► Vector Retriever ──┐
 
 **[→ Go to module](hybridSearch/README.md)**
 
-### 2. [`optimizeRagTechnique/`](optimizeRagTechnique/README.md) — Advanced RAG Pipeline
+### 2. [`optimizeRAG/`](optimizeRAG/README.md) — Advanced RAG Pipeline
 
 Four techniques composed into an end-to-end pipeline:
 
@@ -61,9 +62,37 @@ Four techniques composed into an end-to-end pipeline:
 Query → MultiQuery → Hybrid Ensemble (BM25 + ParentDoc Vector) → Compress → LLM
 ```
 
-**[→ Go to module](optimizeRagTechnique/README.md)**
+**[→ Go to module](optimizeRAG/README.md)**
 
-### 3. [`tokenTrackingandLimiting/`](tokenTrackingandLimiting/README.md) — Token Budgeting
+### 3. [`costOptimization/`](costOptimization/README.md) — Vector Search Cost Optimization
+
+Five strategies to cut embedding & vector DB costs 60–90% without sacrificing retrieval quality:
+
+| # | Technique | Impact |
+|---|-----------|--------|
+| 1 | **Dimensionality Reduction** | Truncate 1536→256–512 dims via Matryoshka embeddings |
+| 2 | **Quantization** | Compress float32→int8 for ~75% memory savings |
+| 3 | **Batching** | Batch API calls, upserts, and searches to reduce overhead |
+| 4 | **Caching** | Exact-match (Redis), semantic (vector), and LLM prompt caching |
+| 5 | **Right-Sizing** | Cap dimensions, payload size, HNSW params, TTLs |
+
+**[→ Go to module](costOptimization/README.md)**
+
+### 4. [`scalingRAG/`](scalingRAG/README.md) — HNSW Indexing & Scaling
+
+Deep-dive into **HNSW** (Hierarchical Navigable Small World) — the ANN algorithm powering production vector databases:
+
+| Concept | What it controls |
+|---------|-----------------|
+| **M** (max connections) | Memory vs. recall trade-off |
+| **ef** (search effort) | Speed vs. accuracy trade-off |
+| **ef_construction** | Build quality vs. build time |
+
+Covers configuration in Weaviate, ChromaDB, and notes on Pinecone.
+
+**[→ Go to module](scalingRAG/README.md)**
+
+### 5. [`tokenTrackingandLimiting/`](tokenTrackingandLimiting/README.md) — Token Budgeting
 
 Two classes for production cost control:
 
@@ -91,8 +120,9 @@ echo "OPENAI_API_KEY=sk-..." > .env
 
 # 4. Run any module
 python hybridSearch/hybridSearch.py
-python optimizeRagTechnique/completePipeline.py
-python optimizeRagTechnique/parentDocumentRetriever.py
+python optimizeRAG/completePipeline.py
+python optimizeRAG/parentDocumentRetriever.py
+python costOptimization/optimize.py
 python tokenTrackingandLimiting/TokenTracking
 ```
 
