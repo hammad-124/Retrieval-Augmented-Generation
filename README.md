@@ -18,20 +18,20 @@ Naive RAG (embed → retrieve → generate) breaks in production:
 
 ---
 
-## Solution — Five Modules
+## Solution — Six Modules
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          RAG Playbook                               │
-├──────────────┬──────────────┬──────────────┬─────────────┬──────────┤
-│  hybridSearch│ optimizeRAG  │ tokenTracking│  costOpt.   │scalingRAG│
-│              │              │ &Limiting    │             │          │
-│  Vector +    │ Multi-Query  │ Pre-flight   │ Dim. Reduce │ HNSW     │
-│  BM25        │ Contextual   │ budget       │ Quantization│ Indexing │
-│  (keywords)  │ Compression  │ Per-user     │ Batching    │ M & ef   │
-│              │ Parent Doc   │ tracking     │ Caching     │ tuning   │
-│              │ Ensemble     │ Cost ceiling │ Right-size  │          │
-└──────────────┴──────────────┴──────────────┴─────────────┴──────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                               RAG Playbook                                          │
+├──────────────┬──────────────┬──────────────┬─────────────┬──────────┬───────────────┤
+│  hybridSearch│ optimizeRAG  │ tokenTracking│  costOpt.   │scalingRAG│ securityLayer │
+│              │              │ &Limiting    │             │          │               │
+│  Vector +    │ Multi-Query  │ Pre-flight   │ Dim. Reduce │ HNSW     │ Prompt Inject │
+│  BM25        │ Contextual   │ budget       │ Quantization│ Indexing │ PII/Secrets   │
+│  (keywords)  │ Compression  │ Per-user     │ Batching    │ M & ef   │ LLM Guard     │
+│              │ Parent Doc   │ tracking     │ Caching     │ tuning   │ Rate Limiter  │
+│              │ Ensemble     │ Cost ceiling │ Right-size  │          │ Audit Logging │
+└──────────────┴──────────────┴──────────────┴─────────────┴──────────┴───────────────┘
 ```
 
 ### 1. [`hybridSearch/`](hybridSearch/README.md) — Hybrid Search (Vector + BM25)
@@ -103,6 +103,21 @@ Two classes for production cost control:
 
 **[→ Go to module](tokenTrackingandLimiting/README.md)**
 
+### 6. [`securityLayer/`](securityLayer/README.md) — LLM Security & PII Pipeline
+
+Production-grade guardrails for LLM applications: input sanitization, PII/secrets detection, LLM-as-guard classification, output validation, rate limiting, and audit logging — composed into one `SecurePipeline`.
+
+| # | Layer | What it does |
+|---|-------|-------------|
+| 1 | **Rate Limiter** | Token-bucket per user/session — rejects over-quota requests before any processing |
+| 2 | **Input Sanitizer** | Regex prompt-injection screen (fast, local, zero API cost) |
+| 3 | **PII/Secrets Mask** | Redacts emails, SSNs, credit cards, API keys, tokens before reaching the LLM |
+| 4 | **LLM Guard** | Semantic classifier (protected by circuit breaker — fails closed by default) |
+| 5 | **Output Validator** | Re-checks LLM output for leaked PII/secrets before returning to user |
+| 6 | **Audit Logger** | Structured events at every stage for incident response and debugging |
+
+**[→ Go to module](securityLayer/README.md)**
+
 ---
 
 ## Quick Start
@@ -124,6 +139,7 @@ python optimizeRAG/completePipeline.py
 python optimizeRAG/parentDocumentRetriever.py
 python costOptimization/optimize.py
 python tokenTrackingandLimiting/TokenTracking
+python securityLayer/security_pipeline.py
 ```
 
 ---
